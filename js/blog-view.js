@@ -47,7 +47,7 @@ function isGitHubPages() {
 
 // Initialize the blog post page
 document.addEventListener('DOMContentLoaded', () => {
-    // Get the blog ID from the URL query parameter (support both 'id' and 'slug' parameters)
+    // Get the blog ID from the URL query parameter
     const urlParams = new URLSearchParams(window.location.search);
     const blogId = urlParams.get('id') || urlParams.get('slug');
     
@@ -58,13 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('Loading blog post with ID:', blogId);
     
-    // Determine if we're on GitHub Pages (including custom domain)
-    const onGitHubPages = isGitHubPages();
-    console.log('Running on GitHub Pages:', onGitHubPages);
-    
     // Fetch the blog index to get the blog metadata
-    let indexUrl = 'blogs/index.json';
-    
+    const indexUrl = 'blogs/index.json';
     console.log('Fetching blog index from:', indexUrl);
     
     fetch(indexUrl)
@@ -90,12 +85,28 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Update the page title and metadata
             document.title = blog.title + ' - Sanjay Krishna';
-            document.getElementById('blog-title').textContent = blog.title;
-            document.getElementById('blog-date').textContent = formatDate(blog.date);
-            document.getElementById('blog-author').textContent = blog.author;
+            blogTitle.textContent = blog.title;
+            blogDate.textContent = formatDate(blog.date);
+            blogAuthor.textContent = blog.author;
             
-            // Fetch content using GitHub API if on custom domain
-            return fetchBlogContentUsingGitHubAPI(blog)
+            // Determine the URL to fetch the blog content
+            let contentUrl = blog.path;
+            
+            // Make sure the path doesn't start with a slash
+            if (contentUrl.startsWith('/')) {
+                contentUrl = contentUrl.substring(1);
+            }
+            
+            console.log('Fetching blog content from:', contentUrl);
+            
+            // Fetch the blog content
+            return fetch(contentUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to load blog content (${response.status})`);
+                    }
+                    return response.text();
+                })
                 .then(content => {
                     // Configure marked for proper rendering
                     marked.setOptions({
@@ -103,45 +114,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         gfm: true
                     });
                     
-                    // Parse the markdown content
-                    try {
-                        // For markdown files, parse the content
-                        let htmlContent;
-                        if (blog.path.endsWith('.md')) {
-                            // Remove frontmatter from markdown
-                            const cleanContent = content.replace(/^---[\s\S]*?---\n/, '');
-                            htmlContent = marked.parse(cleanContent);
-                        } else {
-                            // For HTML files, use as is
-                            htmlContent = content;
-                        }
-                        
-                        // Fix image paths after parsing
-                        let fixedHtml = htmlContent;
-                        
-                        // Fix relative image paths
-                        fixedHtml = fixedHtml.replace(/src="\.\.\/images\//g, 'src="images/');
-                        fixedHtml = fixedHtml.replace(/src="\.\/images\//g, 'src="images/');
-                        
-                        // Display the content
-                        document.getElementById('blog-content').innerHTML = fixedHtml;
-                        
-                        // Setup post navigation
-                        setupPostNavigation(blogs, blog);
-                        
-                        // Process images and links
-                        enhanceContentDisplay();
-                        
-                        return blog;
-                    } catch (parseError) {
-                        console.error('Error parsing markdown:', parseError);
-                        throw parseError;
+                    // For markdown files, parse the content
+                    let htmlContent;
+                    if (blog.path.endsWith('.md')) {
+                        // Remove frontmatter from markdown
+                        const cleanContent = content.replace(/^---[\s\S]*?---\n/, '');
+                        htmlContent = marked.parse(cleanContent);
+                    } else {
+                        // For HTML files, use as is
+                        htmlContent = content;
                     }
+                    
+                    // Fix image paths
+                    htmlContent = htmlContent.replace(/src="\.\.\/images\//g, 'src="images/');
+                    htmlContent = htmlContent.replace(/src="\.\/images\//g, 'src="images/');
+                    
+                    // Display the content
+                    blogContent.innerHTML = htmlContent;
+                    
+                    // Setup post navigation
+                    setupPostNavigation(blogs, blog);
+                    
+                    // Process images and links
+                    enhanceContentDisplay();
                 });
         })
         .catch(error => {
             console.error('Error loading blog post:', error);
-            document.getElementById('blog-content').innerHTML = `
+            blogContent.innerHTML = `
                 <div class="error">
                     <h3>Error Loading Blog Post</h3>
                     <p>${error.message}</p>
@@ -151,105 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 });
-
-/**
- * Fetch blog content using GitHub API directly if on custom domain
- * This should work more reliably than using relative paths
- */
-async function fetchBlogContentUsingGitHubAPI(blog) {
-    try {
-        console.log('Fetching blog content for:', blog.slug);
-        
-        // Handle both relative and absolute paths
-        let filePath = blog.path;
-        
-        // Remove leading slash if present
-        if (filePath.startsWith('/')) {
-            filePath = filePath.substring(1);
-        }
-        
-        // Determine if we're running on custom domain or github.io
-        const isGitHubPages = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-        const isCustomDomain = isGitHubPages && !window.location.hostname.includes('github.io');
-        
-        console.log('Running on GitHub Pages:', isGitHubPages);
-        console.log('Running on custom domain:', isCustomDomain);
-        
-        let contentUrl;
-        
-        if (isCustomDomain) {
-            // For custom domains, use the GitHub API to fetch content directly
-            const username = 'sjaykh';
-            const repo = 'sjaykh.github.io';
-            
-            // First try the Raw Content URL as it's more reliable
-            contentUrl = `https://raw.githubusercontent.com/${username}/${repo}/main/${filePath}`;
-            console.log('Trying GitHub raw URL:', contentUrl);
-            
-            try {
-                const response = await fetch(contentUrl, {
-                    cache: 'no-store',
-                    headers: {
-                        'Accept': 'text/plain, text/markdown',
-                        'Cache-Control': 'no-cache'
-                    }
-                });
-                
-                if (response.ok) {
-                    const content = await response.text();
-                    console.log(`Successfully fetched ${content.length} bytes from Raw GitHub`);
-                    return content;
-                }
-                
-                console.warn(`Raw GitHub fetch failed with status ${response.status}, trying API fallback`);
-            } catch (error) {
-                console.warn('Error fetching from Raw GitHub, trying API fallback:', error);
-            }
-            
-            // Fallback to GitHub API
-            const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`;
-            console.log('Falling back to GitHub API URL:', apiUrl);
-            
-            const response = await fetch(apiUrl, {
-                cache: 'no-store',
-                headers: {
-                    'Accept': 'application/vnd.github.v3.raw',
-                    'Cache-Control': 'no-cache'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch from GitHub API: ${response.status} ${response.statusText}`);
-            }
-            
-            const content = await response.text();
-            console.log(`Successfully fetched ${content.length} bytes from GitHub API`);
-            return content;
-        } else {
-            // For github.io or local development, use relative paths
-            contentUrl = new URL(filePath, window.location.origin).href;
-            console.log('Using relative URL:', contentUrl);
-            
-            const response = await fetch(contentUrl, {
-                cache: 'no-store',
-                headers: {
-                    'Cache-Control': 'no-cache'
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch blog content: ${response.status} ${response.statusText}`);
-            }
-            
-            const content = await response.text();
-            console.log(`Successfully fetched ${content.length} bytes`);
-            return content;
-        }
-    } catch (error) {
-        console.error('Error fetching blog content:', error);
-        throw new Error(`Failed to load blog content: ${error.message}`);
-    }
-}
 
 /**
  * Enhance images and links in the blog content
@@ -277,21 +178,6 @@ function enhanceContentDisplay() {
         if (link.hostname !== window.location.hostname) {
             link.setAttribute('target', '_blank');
             link.setAttribute('rel', 'noopener noreferrer');
-        }
-    });
-    
-    // Style blockquotes
-    const blockquotes = document.getElementById('blog-content').querySelectorAll('blockquote');
-    blockquotes.forEach(blockquote => {
-        // Check if this is a nested blockquote
-        if (blockquote.querySelector('blockquote')) {
-            blockquote.classList.add('outer-quote');
-            
-            // Find all nested blockquotes and add a class
-            const nestedQuotes = blockquote.querySelectorAll('blockquote');
-            nestedQuotes.forEach(nested => {
-                nested.classList.add('nested-quote');
-            });
         }
     });
 }
