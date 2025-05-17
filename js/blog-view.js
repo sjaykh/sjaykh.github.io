@@ -127,8 +127,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const htmlContent = marked.parse(content);
                         
-                        // Fix relative image paths
+                        // Fix image paths after parsing
                         let fixedHtml = htmlContent;
+                        
+                        // Fix relative image paths
                         fixedHtml = fixedHtml.replace(/src="\.\.\/images\//g, 'src="images/');
                         fixedHtml = fixedHtml.replace(/src="\.\/images\//g, 'src="images/');
                         
@@ -374,32 +376,36 @@ async function fetchBlogPosts() {
  */
 async function fetchBlogContent(post) {
     try {
+        console.log('Fetching blog content for:', post.slug);
+        
         // Handle both relative and absolute paths
         let filePath = post.path;
         let fullUrl;
         
-        // Create GitHub Pages URL
-        if (window.location.hostname.includes('github.io')) {
-            // Direct fetch from GitHub raw content
-            const ghUsername = 'sjaykh';
-            const ghRepo = 'sjaykh.github.io';
-            
-            // Remove leading slash if present
+        // Check if we're on GitHub Pages (either github.io or custom domain)
+        const isGitHubPages = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+        console.log('Running on GitHub Pages:', isGitHubPages);
+        
+        if (isGitHubPages) {
+            // We're on GitHub Pages (either github.io or custom domain)
+            // For both github.io and custom domains, we can use relative paths
             if (filePath.startsWith('/')) {
                 filePath = filePath.substring(1);
             }
             
-            // Use raw.githubusercontent.com for direct content access
-            fullUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/${filePath}`;
-            console.log(`Trying to fetch blog from GitHub raw content: ${fullUrl}`);
+            // Use relative path from current domain
+            fullUrl = new URL(filePath, window.location.origin).href;
+            console.log(`Fetching blog using relative path on GitHub Pages: ${fullUrl}`);
         } else {
             // Local development
             if (filePath.startsWith('/')) {
                 filePath = filePath.substring(1);
             }
             fullUrl = new URL(filePath, window.location.origin).href;
-            console.log(`Trying to fetch blog locally: ${fullUrl}`);
+            console.log(`Fetching blog locally: ${fullUrl}`);
         }
+        
+        console.log('Final URL for blog content:', fullUrl);
         
         const response = await fetch(fullUrl);
         
@@ -409,6 +415,7 @@ async function fetchBlogContent(post) {
         }
         
         const content = await response.text();
+        console.log(`Fetched ${content.length} bytes of content`);
         
         // Process Markdown files
         if (post.path.endsWith('.md')) {
@@ -424,25 +431,25 @@ async function fetchBlogContent(post) {
         
         // Extract content from article tag if available
         const articleMatch = htmlContent.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-        if (articleMatch && articleMatch[1]) {
+        if (articleMatch) {
             htmlContent = articleMatch[1];
-        } else {
-            // Extract content from body tag if available
-            const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-            if (bodyMatch && bodyMatch[1]) {
-                // Filter out any script tags
-                htmlContent = bodyMatch[1].replace(/<script[\s\S]*?<\/script>/gi, '');
-            }
         }
         
         return htmlContent;
     } catch (error) {
         console.error('Error fetching blog content:', error);
-        return `<div class="error-message">
-                    <h3>Error Loading Blog Post</h3>
-                    <p>Could not load the blog post content. Please try again later.</p>
-                    <p class="error-details">${error.message || 'Unknown error'}</p>
-                </div>`;
+        return `
+            <div class="error">
+                <h3>Error Loading Blog Content</h3>
+                <p>${error.message}</p>
+                <p>Please try again later.</p>
+                <div class="debug-info">
+                    <p>Post slug: ${post.slug}</p>
+                    <p>Post path: ${post.path}</p>
+                    <p>Host: ${window.location.hostname}</p>
+                </div>
+            </div>
+        `;
     }
 }
 
