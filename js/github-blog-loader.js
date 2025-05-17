@@ -4,10 +4,17 @@
  */
 
 class GitHubBlogLoader {
-    constructor(username, repo, path) {
-        this.username = username;
-        this.repo = repo;
-        this.path = path;
+    constructor(options = {}) {
+        this.username = options.username || 'sjaykh';
+        this.repo = options.repo || 'sjaykh.github.io';
+        this.branch = options.branch || 'main';
+        this.path = options.path || 'blogs';
+        this.maxPosts = options.maxPosts || 100;
+        this.postsPerPage = options.postsPerPage || 10;
+        this.currentPage = 1;
+        this.totalPages = 1;
+        this.allPosts = [];
+        this.filteredPosts = [];
         
         // For GitHub Pages, use direct URLs to the raw content
         if (repo.endsWith('.github.io')) {
@@ -21,6 +28,244 @@ class GitHubBlogLoader {
         }
         
         console.log(`GitHubBlogLoader initialized with API URL: ${this.apiUrl}`);
+    }
+
+    /**
+     * Initialize the blog loader
+     */
+    async init() {
+        try {
+            // Load blog posts
+            await this.loadBlogPosts();
+            
+            // Set up search functionality if search input exists
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', this.handleSearch.bind(this));
+            }
+            
+            // Display the first page of posts
+            this.displayPosts();
+            
+            // Set up pagination if pagination container exists
+            const paginationContainer = document.getElementById('pagination');
+            if (paginationContainer) {
+                this.setupPagination();
+            }
+        } catch (error) {
+            console.error('Error initializing blog loader:', error);
+            this.showError(error.message);
+        }
+    }
+
+    /**
+     * Load blog posts from GitHub
+     */
+    async loadBlogPosts() {
+        try {
+            // Determine if we're on GitHub Pages with custom domain
+            const isGitHubPages = window.location.hostname.includes('github.io') || 
+                                 !window.location.hostname.includes('localhost');
+            
+            // Get the blog index
+            let indexUrl;
+            
+            if (isGitHubPages) {
+                // For GitHub Pages (both with and without custom domain)
+                // Try to fetch from the current domain first
+                indexUrl = `${window.location.origin}/${this.path}/index.json`;
+                
+                // If we're on a custom domain, we need to use the raw GitHub URL as fallback
+                if (!window.location.hostname.includes('github.io')) {
+                    // We'll try the local path first, and if that fails, we'll use the raw GitHub URL
+                    console.log('Using custom domain path:', indexUrl);
+                }
+            } else {
+                // For local development
+                indexUrl = `${this.path}/index.json`;
+            }
+            
+            console.log('Fetching blog index from:', indexUrl);
+            
+            let response = await fetch(indexUrl);
+            
+            // If the fetch fails and we're on a custom domain, try the raw GitHub URL
+            if (!response.ok && isGitHubPages && !window.location.hostname.includes('github.io')) {
+                console.log('Failed to fetch from custom domain, trying raw GitHub URL');
+                indexUrl = `https://raw.githubusercontent.com/${this.username}/${this.repo}/${this.branch}/${this.path}/index.json`;
+                console.log('Fetching from:', indexUrl);
+                response = await fetch(indexUrl);
+            }
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load blog index (${response.status})`);
+            }
+            
+            const posts = await response.json();
+            console.log('Loaded blog posts:', posts.length);
+            
+            // Sort posts by date (newest first)
+            this.allPosts = posts.sort((a, b) => {
+                return new Date(b.date) - new Date(a.date);
+            });
+            
+            this.filteredPosts = [...this.allPosts];
+            this.totalPages = Math.ceil(this.filteredPosts.length / this.postsPerPage);
+            
+            return this.allPosts;
+        } catch (error) {
+            console.error('Error loading blog posts:', error);
+            this.showError(`Failed to load blog posts: ${error.message}`);
+            throw error;
+        }
+    }
+
+    /**
+     * Display blog posts
+     */
+    displayPosts() {
+        const container = document.getElementById('blog-entries');
+        if (!container) return;
+        
+        // Calculate pagination
+        const startIndex = (this.currentPage - 1) * this.postsPerPage;
+        const endIndex = startIndex + this.postsPerPage;
+        const postsToShow = this.filteredPosts.slice(startIndex, endIndex);
+        
+        if (postsToShow.length === 0) {
+            container.innerHTML = '<p>No blog posts found.</p>';
+            return;
+        }
+        
+        // Create HTML for posts
+        const postsHtml = postsToShow.map(post => {
+            const date = new Date(post.date);
+            const formattedDate = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            return `
+                <div class="blog-post-item">
+                    <a href="blog.html?slug=${post.slug}" class="blog-post-title">${post.title}</a>
+                    <span class="blog-post-date">${formattedDate}</span>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = postsHtml;
+    }
+
+    /**
+     * Set up pagination
+     */
+    setupPagination() {
+        const paginationContainer = document.getElementById('pagination');
+        if (!paginationContainer) return;
+        
+        if (this.totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        // Previous button
+        paginationHtml += `
+            <button class="pagination-btn prev-btn" ${this.currentPage === 1 ? 'disabled' : ''}>
+                &laquo; Previous
+            </button>
+        `;
+        
+        // Page numbers
+        for (let i = 1; i <= this.totalPages; i++) {
+            paginationHtml += `
+                <button class="pagination-btn page-btn ${i === this.currentPage ? 'active' : ''}" data-page="${i}">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        // Next button
+        paginationHtml += `
+            <button class="pagination-btn next-btn" ${this.currentPage === this.totalPages ? 'disabled' : ''}>
+                Next &raquo;
+            </button>
+        `;
+        
+        paginationContainer.innerHTML = paginationHtml;
+        
+        // Add event listeners
+        const prevBtn = paginationContainer.querySelector('.prev-btn');
+        const nextBtn = paginationContainer.querySelector('.next-btn');
+        const pageBtns = paginationContainer.querySelectorAll('.page-btn');
+        
+        prevBtn.addEventListener('click', () => {
+            if (this.currentPage > 1) {
+                this.currentPage--;
+                this.displayPosts();
+                this.setupPagination();
+            }
+        });
+        
+        nextBtn.addEventListener('click', () => {
+            if (this.currentPage < this.totalPages) {
+                this.currentPage++;
+                this.displayPosts();
+                this.setupPagination();
+            }
+        });
+        
+        pageBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = parseInt(btn.dataset.page);
+                if (page !== this.currentPage) {
+                    this.currentPage = page;
+                    this.displayPosts();
+                    this.setupPagination();
+                }
+            });
+        });
+    }
+
+    /**
+     * Handle search
+     */
+    handleSearch(event) {
+        const searchTerm = event.target.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            this.filteredPosts = [...this.allPosts];
+        } else {
+            this.filteredPosts = this.allPosts.filter(post => {
+                return (
+                    post.title.toLowerCase().includes(searchTerm) ||
+                    (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm))
+                );
+            });
+        }
+        
+        this.currentPage = 1;
+        this.totalPages = Math.ceil(this.filteredPosts.length / this.postsPerPage);
+        this.displayPosts();
+        this.setupPagination();
+    }
+
+    /**
+     * Show error message
+     */
+    showError(message) {
+        const container = document.getElementById('blog-entries');
+        if (container) {
+            container.innerHTML = `
+                <div class="error">
+                    <h3>Error Loading Blog Posts</h3>
+                    <p>${message}</p>
+                    <p>Please try again later.</p>
+                </div>
+            `;
+        }
     }
 
     /**
