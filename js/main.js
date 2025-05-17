@@ -1,3 +1,7 @@
+/**
+ * Main JavaScript file for the website
+ */
+
 // Constants
 const GITHUB_USERNAME = 'sjaykh'; // Your actual GitHub username
 const REPO_NAME = 'sjaykh.github.io'; // Changed from 'webs' to the GitHub Pages repository name
@@ -36,6 +40,26 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newsletterForm) {
         newsletterForm.addEventListener('submit', handleNewsletterSubmit);
     }
+
+    // Check if we're running on GitHub Pages (either github.io or custom domain)
+    function isGitHubPages() {
+        // List of known local development hostnames
+        const localHostnames = ['localhost', '127.0.0.1', ''];
+        
+        // If we're on a local hostname, we're not on GitHub Pages
+        if (localHostnames.includes(window.location.hostname)) {
+            return false;
+        }
+        
+        // Otherwise, assume we're on GitHub Pages (either github.io or custom domain)
+        return true;
+    }
+    
+    // Log environment information for debugging
+    console.log('Environment information:');
+    console.log('- Hostname:', window.location.hostname);
+    console.log('- Running on GitHub Pages:', isGitHubPages());
+    console.log('- Full URL:', window.location.href);
 });
 
 // Load featured blog posts for the homepage
