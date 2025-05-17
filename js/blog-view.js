@@ -260,7 +260,7 @@ async function loadBlogPost() {
         
         
         // Update page title
-        document.title = `${currentPost.title} - Gouri Kartha`;
+        document.title = `${currentPost.title} - Sanjay Krishna`;
         
         // Populate blog post data
         blogTitle.textContent = currentPost.title;
@@ -349,8 +349,8 @@ async function fetchBlogContent(post) {
         // Create GitHub Pages URL
         if (window.location.hostname.includes('github.io')) {
             // Direct fetch from GitHub raw content
-            const ghUsername = 'gourikartha';
-            const ghRepo = 'gourikartha.github.io';
+            const ghUsername = 'sjaykh';
+            const ghRepo = 'sjaykh.github.io';
             
             // Remove leading slash if present
             if (filePath.startsWith('/')) {
