@@ -382,36 +382,52 @@ async function fetchBlogContent(post) {
         let filePath = post.path;
         let fullUrl;
         
-        // Check if we're on GitHub Pages (either github.io or custom domain)
+        // Determine if we're running on custom domain or github.io
         const isGitHubPages = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-        console.log('Running on GitHub Pages:', isGitHubPages);
+        const isCustomDomain = isGitHubPages && !window.location.hostname.includes('github.io');
         
-        if (isGitHubPages) {
-            // We're on GitHub Pages (either github.io or custom domain)
-            // For both github.io and custom domains, we can use relative paths
+        console.log('Running on GitHub Pages:', isGitHubPages);
+        console.log('Running on custom domain:', isCustomDomain);
+        
+        // When running on custom domain, use GitHub raw content URL
+        if (isCustomDomain) {
+            // For custom domains, we need to use the raw.githubusercontent.com URL
+            const ghUsername = 'sjaykh';
+            const ghRepo = 'sjaykh.github.io';
+            
+            // Remove leading slash if present
             if (filePath.startsWith('/')) {
                 filePath = filePath.substring(1);
             }
             
-            // Use relative path from current domain
-            fullUrl = new URL(filePath, window.location.origin).href;
-            console.log(`Fetching blog using relative path on GitHub Pages: ${fullUrl}`);
-        } else {
-            // Local development
+            // Use raw.githubusercontent.com for direct content access
+            fullUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/${filePath}`;
+            console.log(`Using GitHub raw content URL: ${fullUrl}`);
+        } 
+        // For github.io or local development 
+        else {
             if (filePath.startsWith('/')) {
                 filePath = filePath.substring(1);
             }
             fullUrl = new URL(filePath, window.location.origin).href;
-            console.log(`Fetching blog locally: ${fullUrl}`);
+            console.log(`Using relative URL: ${fullUrl}`);
         }
         
+        // Add a cache-busting parameter to prevent caching issues
+        fullUrl = `${fullUrl}?t=${new Date().getTime()}`;
         console.log('Final URL for blog content:', fullUrl);
         
-        const response = await fetch(fullUrl);
+        const response = await fetch(fullUrl, {
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
         
         if (!response.ok) {
             console.error(`Failed to fetch blog ${fullUrl}: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to fetch blog: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch blog content (${response.status}). Please check if the file exists at ${filePath}`);
         }
         
         const content = await response.text();
@@ -421,8 +437,14 @@ async function fetchBlogContent(post) {
         if (post.path.endsWith('.md')) {
             // Remove frontmatter and convert to HTML
             const cleanContent = content.replace(/---[\s\S]*?---/, '').trim();
-            const html = marked.parse(cleanContent);
             
+            // Configure marked for proper rendering
+            marked.setOptions({
+                breaks: true,
+                gfm: true
+            });
+            
+            const html = marked.parse(cleanContent);
             return html;
         }
         
@@ -447,6 +469,7 @@ async function fetchBlogContent(post) {
                     <p>Post slug: ${post.slug}</p>
                     <p>Post path: ${post.path}</p>
                     <p>Host: ${window.location.hostname}</p>
+                    <p>Repository: https://github.com/sjaykh/sjaykh.github.io</p>
                 </div>
             </div>
         `;
