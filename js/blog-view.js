@@ -44,14 +44,20 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('Loading blog post with ID:', blogId);
     
-    // Determine if we're on GitHub Pages
-    const isGitHubPages = window.location.hostname.includes('github.io');
+    // Determine if we're on GitHub Pages (with or without custom domain)
+    const isGitHubPages = window.location.hostname.includes('github.io') || 
+                         !window.location.hostname.includes('localhost');
+    const isCustomDomain = isGitHubPages && !window.location.hostname.includes('github.io');
     
     // Fetch the blog index to get the blog metadata
     let indexUrl = 'blogs/index.json';
     
-    // If on GitHub Pages, use raw GitHub content URL
-    if (isGitHubPages) {
+    // If on GitHub Pages with custom domain, try the current domain first
+    if (isCustomDomain) {
+        indexUrl = `${window.location.origin}/blogs/index.json`;
+    }
+    // If on GitHub Pages with github.io domain, use raw GitHub content URL
+    else if (isGitHubPages) {
         const ghUsername = 'sjaykh';
         const ghRepo = 'sjaykh.github.io';
         indexUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/blogs/index.json`;
@@ -60,6 +66,18 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Fetching blog index from:', indexUrl);
     
     fetch(indexUrl)
+        .then(response => {
+            // If fetch fails and we're on a custom domain, try the raw GitHub URL
+            if (!response.ok && isCustomDomain) {
+                console.log('Failed to fetch from custom domain, trying raw GitHub URL');
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
+                indexUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/blogs/index.json`;
+                console.log('Fetching from:', indexUrl);
+                return fetch(indexUrl);
+            }
+            return response;
+        })
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Failed to load blogs index (${response.status})`);
@@ -89,8 +107,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Determine the URL to fetch the blog content
             let contentUrl = blog.path;
             
-            // If on GitHub Pages, use raw GitHub content URL
-            if (isGitHubPages) {
+            // If on GitHub Pages with custom domain, try the current domain first
+            if (isCustomDomain) {
+                // Remove any leading slash and 'blogs/' prefix if it exists
+                const cleanPath = blog.path.startsWith('/') ? blog.path.substring(1) : blog.path;
+                contentUrl = `${window.location.origin}/${cleanPath}`;
+            }
+            // If on GitHub Pages with github.io domain, use raw GitHub content URL
+            else if (isGitHubPages) {
                 const ghUsername = 'sjaykh';
                 const ghRepo = 'sjaykh.github.io';
                 
@@ -105,14 +129,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // Fetch the blog content
             return fetch(contentUrl)
                 .then(response => {
+                    // If fetch fails and we're on a custom domain, try the raw GitHub URL
+                    if (!response.ok && isCustomDomain) {
+                        console.log('Failed to fetch from custom domain, trying raw GitHub URL');
+                        const ghUsername = 'sjaykh';
+                        const ghRepo = 'sjaykh.github.io';
+                        
+                        // Remove any leading slash
+                        const cleanPath = blog.path.startsWith('/') ? blog.path.substring(1) : blog.path;
+                        
+                        const rawUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/${cleanPath}`;
+                        console.log('Fetching from:', rawUrl);
+                        return fetch(rawUrl);
+                    }
+                    return response;
+                })
+                .then(response => {
                     if (!response.ok) {
                         throw new Error(`Failed to load blog content from ${contentUrl} (${response.status})`);
                     }
                     return response.text();
                 })
                 .then(markdown => {
-                    console.log('Loaded markdown content, length:', markdown.length);
-                    
                     // Remove frontmatter from markdown
                     const content = markdown.replace(/^---[\s\S]*?---\n/, '');
                     
@@ -131,11 +169,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         // If on GitHub Pages, use absolute URLs for images
                         if (isGitHubPages) {
-                            const ghUsername = 'sjaykh';
-                            const ghRepo = 'sjaykh.github.io';
-                            const baseUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/`;
+                            let baseUrl;
                             
-                            // Replace relative image paths with absolute GitHub URLs
+                            if (isCustomDomain) {
+                                // For custom domain, use the current domain
+                                baseUrl = `${window.location.origin}/`;
+                            } else {
+                                // For github.io domain, use raw GitHub content URL
+                                const ghUsername = 'sjaykh';
+                                const ghRepo = 'sjaykh.github.io';
+                                baseUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/`;
+                            }
+                            
+                            // Replace relative image paths with absolute URLs
                             fixedHtml = fixedHtml.replace(/src="\.\.\/images\//g, `src="${baseUrl}images/`);
                             fixedHtml = fixedHtml.replace(/src="\.\/images\//g, `src="${baseUrl}images/`);
                             fixedHtml = fixedHtml.replace(/src="images\//g, `src="${baseUrl}images/`);
