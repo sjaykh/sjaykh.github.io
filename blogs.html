@@ -467,6 +467,28 @@
 
     <script src="js/github-blog-loader.js"></script>
     <script>
+        // Initialize empty LocalBlogLoader class if it's not defined
+        if (typeof LocalBlogLoader === 'undefined') {
+            class LocalBlogLoader {
+                constructor(path) {
+                    this.path = path;
+                }
+                
+                async fetchBlogPosts() {
+                    console.log('LocalBlogLoader fallback initialized');
+                    return [];
+                }
+                
+                fetchPosts() {
+                    return this.fetchBlogPosts();
+                }
+            }
+            
+            // Expose to global scope
+            window.LocalBlogLoader = LocalBlogLoader;
+        }
+    </script>
+    <script>
         // Blog posts data - will be populated from blogs folder
         let allPosts = [];
         // Create a blog loader instance
@@ -799,6 +821,6 @@
                 console.error('Error in debug section:', e);
             }
         }
-        </script>
+    </script>
 </body>
 </html> 
