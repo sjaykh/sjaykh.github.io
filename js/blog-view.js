@@ -44,8 +44,22 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('Loading blog post with ID:', blogId);
     
+    // Determine if we're on GitHub Pages
+    const isGitHubPages = window.location.hostname.includes('github.io');
+    
     // Fetch the blog index to get the blog metadata
-    fetch('blogs/index.json')
+    let indexUrl = 'blogs/index.json';
+    
+    // If on GitHub Pages, use raw GitHub content URL
+    if (isGitHubPages) {
+        const ghUsername = 'sjaykh';
+        const ghRepo = 'sjaykh.github.io';
+        indexUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/blogs/index.json`;
+    }
+    
+    console.log('Fetching blog index from:', indexUrl);
+    
+    fetch(indexUrl)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`Failed to load blogs index (${response.status})`);
@@ -72,11 +86,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('blog-date').textContent = formatDate(blog.date);
             document.getElementById('blog-author').textContent = blog.author;
             
+            // Determine the URL to fetch the blog content
+            let contentUrl = blog.path;
+            
+            // If on GitHub Pages, use raw GitHub content URL
+            if (isGitHubPages) {
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
+                
+                // Remove any leading slash
+                const cleanPath = blog.path.startsWith('/') ? blog.path.substring(1) : blog.path;
+                
+                contentUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/${cleanPath}`;
+            }
+            
+            console.log('Fetching blog content from:', contentUrl);
+            
             // Fetch the blog content
-            return fetch(blog.path)
+            return fetch(contentUrl)
                 .then(response => {
                     if (!response.ok) {
-                        throw new Error(`Failed to load blog content from ${blog.path} (${response.status})`);
+                        throw new Error(`Failed to load blog content from ${contentUrl} (${response.status})`);
                     }
                     return response.text();
                 })
@@ -97,8 +127,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         const htmlContent = marked.parse(content);
                         
                         // Fix image paths after parsing
-                        let fixedHtml = htmlContent.replace(/src="\.\.\/images\//g, 'src="images/');
-                        fixedHtml = fixedHtml.replace(/src="\.\/images\//g, 'src="images/');
+                        let fixedHtml = htmlContent;
+                        
+                        // If on GitHub Pages, use absolute URLs for images
+                        if (isGitHubPages) {
+                            const ghUsername = 'sjaykh';
+                            const ghRepo = 'sjaykh.github.io';
+                            const baseUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/`;
+                            
+                            // Replace relative image paths with absolute GitHub URLs
+                            fixedHtml = fixedHtml.replace(/src="\.\.\/images\//g, `src="${baseUrl}images/`);
+                            fixedHtml = fixedHtml.replace(/src="\.\/images\//g, `src="${baseUrl}images/`);
+                            fixedHtml = fixedHtml.replace(/src="images\//g, `src="${baseUrl}images/`);
+                        } else {
+                            // For local development, just fix relative paths
+                            fixedHtml = fixedHtml.replace(/src="\.\.\/images\//g, 'src="images/');
+                            fixedHtml = fixedHtml.replace(/src="\.\/images\//g, 'src="images/');
+                        }
                         
                         // Display the content
                         document.getElementById('blog-content').innerHTML = fixedHtml;
