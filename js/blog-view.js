@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const blog = blogs.find(b => b.slug === blogId);
             
             if (!blog) {
-                document.getElementById('blog-content').innerHTML = `
+                blogContent.innerHTML = `
                     <p>Blog post not found with ID: ${blogId}</p>
                     <p>Available posts: ${blogs.map(b => b.slug).join(', ')}</p>
                 `;
@@ -89,55 +89,57 @@ document.addEventListener('DOMContentLoaded', () => {
             blogDate.textContent = formatDate(blog.date);
             blogAuthor.textContent = blog.author;
             
-            // Determine the URL to fetch the blog content
-            let contentUrl = blog.path;
+            // Check if we're on GitHub Pages with custom domain
+            const isCustomDomain = window.location.hostname !== 'localhost' && 
+                                   window.location.hostname !== '127.0.0.1' &&
+                                   !window.location.hostname.includes('github.io');
             
-            // Make sure the path doesn't start with a slash
-            if (contentUrl.startsWith('/')) {
-                contentUrl = contentUrl.substring(1);
-            }
-            
-            console.log('Fetching blog content from:', contentUrl);
-            
-            // Fetch the blog content
-            return fetch(contentUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to load blog content (${response.status})`);
-                    }
-                    return response.text();
-                })
-                .then(content => {
-                    // Configure marked for proper rendering
-                    marked.setOptions({
-                        breaks: true,
-                        gfm: true
+            if (isCustomDomain) {
+                console.log('Custom domain detected, using GitHub API');
+                
+                // Get the file path relative to repository root
+                let filePath = blog.path;
+                if (filePath.startsWith('/')) {
+                    filePath = filePath.substring(1);
+                }
+                
+                // Use GitHub API to fetch content
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
+                const apiUrl = `https://api.github.com/repos/${ghUsername}/${ghRepo}/contents/${filePath}`;
+                
+                console.log('Fetching from GitHub API:', apiUrl);
+                
+                return fetch(apiUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`GitHub API error: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // GitHub API returns content as base64
+                        const content = atob(data.content);
+                        return processContent(content, blog);
                     });
-                    
-                    // For markdown files, parse the content
-                    let htmlContent;
-                    if (blog.path.endsWith('.md')) {
-                        // Remove frontmatter from markdown
-                        const cleanContent = content.replace(/^---[\s\S]*?---\n/, '');
-                        htmlContent = marked.parse(cleanContent);
-                    } else {
-                        // For HTML files, use as is
-                        htmlContent = content;
-                    }
-                    
-                    // Fix image paths
-                    htmlContent = htmlContent.replace(/src="\.\.\/images\//g, 'src="images/');
-                    htmlContent = htmlContent.replace(/src="\.\/images\//g, 'src="images/');
-                    
-                    // Display the content
-                    blogContent.innerHTML = htmlContent;
-                    
-                    // Setup post navigation
-                    setupPostNavigation(blogs, blog);
-                    
-                    // Process images and links
-                    enhanceContentDisplay();
-                });
+            } else {
+                // For local development or github.io, use direct fetch
+                let contentUrl = blog.path;
+                if (contentUrl.startsWith('/')) {
+                    contentUrl = contentUrl.substring(1);
+                }
+                
+                console.log('Fetching content directly:', contentUrl);
+                
+                return fetch(contentUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Failed to load content: ${response.status}`);
+                        }
+                        return response.text();
+                    })
+                    .then(content => processContent(content, blog));
+            }
         })
         .catch(error => {
             console.error('Error loading blog post:', error);
@@ -151,6 +153,43 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
 });
+
+/**
+ * Process blog content - parse markdown and apply fixes
+ */
+function processContent(content, blog) {
+    // Configure marked for proper rendering
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+    
+    // For markdown files, parse the content
+    let htmlContent;
+    if (blog.path.endsWith('.md')) {
+        // Remove frontmatter from markdown
+        const cleanContent = content.replace(/^---[\s\S]*?---\n/, '');
+        htmlContent = marked.parse(cleanContent);
+    } else {
+        // For HTML files, use as is
+        htmlContent = content;
+    }
+    
+    // Fix image paths
+    htmlContent = htmlContent.replace(/src="\.\.\/images\//g, 'src="images/');
+    htmlContent = htmlContent.replace(/src="\.\/images\//g, 'src="images/');
+    
+    // Display the content
+    blogContent.innerHTML = htmlContent;
+    
+    // Setup post navigation
+    setupPostNavigation(blogs, blog);
+    
+    // Process images and links
+    enhanceContentDisplay();
+    
+    return blog;
+}
 
 /**
  * Enhance images and links in the blog content
