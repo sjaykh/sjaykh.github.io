@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Links - Sanjay Krishna</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="images/swirl.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="favicon.ico" type="image/x-icon">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Georgia, serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Top navigation */
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 30px;
+            font-size: 0.75rem;
+        }
+        
+        .top-nav a {
+            color: #555;
+            text-decoration: none;
+        }
+        
+        .top-nav a:hover {
+            text-decoration: underline;
+        }
+        
+        .top-nav-separator {
+            color: #888;
+        }
+        
+        /* Header styles */
+        .site-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .site-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+        }
+        
+        .site-subtitle {
+            font-size: 1rem;
+            font-weight: normal;
+            margin: 0;
+            color: #555;
+        }
+        
+        /* Main content styles */
+        .main-content {
+            margin: 40px 0;
+        }
+        
+        /* Links content styles */
+        .links-content {
+            line-height: 1.7;
+        }
+        
+        .links-content h2 {
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #2a6668;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+        
+        .links-content p {
+            margin-bottom: 1.5rem;
+        }
+        
+        .links-content ul {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .links-content li {
+            margin-bottom: 1rem;
+        }
+        
+        .links-content a {
+            color: #2a6668;
+            text-decoration: none;
+        }
+        
+        .links-content a:hover {
+            text-decoration: underline;
+        }
+        
+        .links-content blockquote {
+            border-left: 3px solid #ddd;
+            padding-left: 1rem;
+            margin-left: 0;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #777;
+        }
+        
+        .error {
+            background-color: #fff0f0;
+            border-left: 3px solid #e74c3c;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #c0392b;
+        }
+        
+        /* Divider */
+        .divider {
+            border-top: 1px solid #eee;
+            margin: 40px 0;
+        }
+        
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            font-size: 0.85rem;
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .social-links a {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 30px;
+            height: 30px;
+            background: #333;
+            color: white;
+            border-radius: 3px;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 600px) {
+            .top-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .footer {
+                flex-direction: column;
+                gap: 20px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Top navigation -->
+    <nav class="top-nav">
+        <a href="index.html">Home</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="blogs.html">Blog</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="work.html">Work</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="links.html">Links</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="bookshelf.html">Bookshelf</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="wiki.sjaykh.in">Wiki</a>
+    </nav>
+
+    <!-- Centered header -->
+    <header class="site-header">
+        <h1 class="site-title">Sanjay Krishna</h1>
+        <h2 class="site-subtitle">Friendly Neighborhood Product Guy</h2>
+    </header>
+
+    <main class="main-content">
+        <div id="links-content" class="links-content">
+            <div class="loading">Loading links...</div>
+        </div>
+    </main>
+
+    <div class="divider"></div>
+    
+    <footer class="footer">
+        <div>To get in touch, mail at <a href="mailto:sjaykh.me@gmail.com">sjaykh.me@gmail.com</a></div>
+        
+        <div class="social-links">
+            <a href="https://twitter.com/sjaykh" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="https://www.linkedin.com/in/sjaykh/" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+            <a href="https://www.instagram.com/sjaykh/" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+    </footer>
+
+    <!-- Include the marked library for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const linksContentElement = document.getElementById('links-content');
+            
+            // Fetch the Markdown file
+            fetch('links/links.md')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to load links.md file');
+                    }
+                    return response.text();
+                })
+                .then(markdown => {
+                    // Parse the Markdown content
+                    const htmlContent = marked.parse(markdown);
+                    
+                    // Display the parsed content
+                    linksContentElement.innerHTML = htmlContent;
+                    
+                    // Add target="_blank" to all external links
+                    const links = linksContentElement.querySelectorAll('a');
+                    links.forEach(link => {
+                        if (link.hostname !== window.location.hostname) {
+                            link.setAttribute('target', '_blank');
+                            link.setAttribute('rel', 'noopener noreferrer');
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading links:', error);
+                    linksContentElement.innerHTML = `
+                        <div class="error">
+                            <h3>Error Loading Links</h3>
+                            <p>${error.message}</p>
+                            <p>Please try again later or contact the site administrator.</p>
+                        </div>
+                    `;
+                });
+        });
+    </script>
+</body>
+</html>

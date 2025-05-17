@@ -1,0 +1,65 @@
+[
+  {
+    "name": "dilemma.md",
+    "path": "blogs/dilemma.md",
+    "title": "The dilemma on whether to act or to wait",
+    "date": "2022-04-30",
+    "author": "Sanjay Krishna",
+    "slug": "dilemma",
+    "excerpt": "the dilemma on whether to act or to wait"
+  },
+  {
+    "name": "feynman.md",
+    "path": "blogs/feynman.md",
+    "title": "Mr. Feynman and Some Revelations",
+    "date": "2020-06-16",
+    "author": "Sanjay Krishna",
+    "slug": "feynman",
+    "excerpt": "Mr. Feynman and Some Revelations"
+  },
+  {
+    "name": "crab.md",
+    "path": "blogs/crab.md",
+    "title": "Why Should We Share Knowledge?",
+    "date": "2020-12-13",
+    "author": "Sanjay Krishna",
+    "slug": "crab",
+    "excerpt": "Why Should We Share Knowledge?"
+  },
+  {
+    "name": "curiosity.md",
+    "path": "blogs/curiosity.md",
+    "title": "Need for Curiosity in a Team",
+    "date": "2020-12-01",
+    "author": "Sanjay Krishna",
+    "slug": "curiosity",
+    "excerpt": "Need for Curiosity in a Team"
+  },
+  {
+    "name": "fallacy.md",
+    "path": "blogs/fallacy.md",
+    "title": "Fallacy of Single Cause",
+    "date": "2022-06-16",
+    "author": "Sanjay Krishna",
+    "slug": "fallacy",
+    "excerpt": "Fallacy of Single Cause"
+  },
+  {
+    "name": "god.md",
+    "path": "blogs/god.md",
+    "title": "ദൈവത്തെക്കുറിച്ച്...",
+    "date": "2022-05-07",
+    "author": "Sanjay Krishna",
+    "slug": "god",
+    "excerpt": "ദൈവത്തെക്കുറിച്ച്..."
+  },
+  {
+    "name": "golden-gate.md",
+    "path": "blogs/golden-gate.md",
+    "title": "The Golden Gate Bridge & Great Products",
+    "date": "2020-11-26",
+    "author": "Sanjay Krishna",
+    "slug": "golden-gate",
+    "excerpt": "The Golden Gate Bridge & Great Products"
+  }
+] 

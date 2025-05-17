@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Post - Sanjay Krishna</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="images/swirl.svg" type="image/svg+xml">
+    <link rel="alternate icon" href="favicon.ico" type="image/x-icon">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/blog-styles.css">
+    <style>
+        body {
+            font-family: Georgia, serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* Top navigation */
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 30px;
+            font-size: 0.75rem;
+        }
+        
+        .top-nav a {
+            color: #555;
+            text-decoration: none;
+        }
+        
+        .top-nav a:hover {
+            text-decoration: underline;
+        }
+        
+        .top-nav-separator {
+            color: #888;
+        }
+        
+        /* Header styles */
+        .site-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .site-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+        }
+        
+        .site-subtitle {
+            font-size: 1rem;
+            font-weight: normal;
+            margin: 0;
+            color: #555;
+        }
+        
+        /* Blog header */
+        .blog-header {
+            margin-bottom: 40px;
+        }
+        
+        .blog-title {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .blog-meta {
+            display: flex;
+            gap: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        /* Divider */
+        .divider {
+            border-top: 1px solid #eee;
+            margin: 40px 0;
+        }
+        
+        /* Footer */
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 60px;
+        }
+        
+        .social-links {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .social-links a {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 30px;
+            height: 30px;
+            background: #333;
+            color: white;
+            border-radius: 3px;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        
+        /* Error message */
+        .error {
+            background-color: #fff0f0;
+            border-left: 3px solid #e74c3c;
+            padding: 1rem;
+            margin: 1rem 0;
+            color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top navigation -->
+    <nav class="top-nav">
+        <a href="index.html">Home</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="blogs.html">Blog</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="work.html">Work</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="links.html">Links</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="bookshelf.html">Bookshelf</a>
+        <span class="top-nav-separator"> / </span>
+        <a href="wiki.sjaykh.in">Wiki</a>
+    </nav>
+
+    <!-- Centered header -->
+    <header class="site-header">
+        <h1 class="site-title">Sanjay Krishna</h1>
+        <h2 class="site-subtitle">Friendly Neighborhood Product Guy</h2>
+    </header>
+
+    <!-- Blog post header -->
+    <header class="blog-header">
+        <h1 id="blog-title" class="blog-title">Blog Title</h1>
+        <div class="blog-meta">
+            <span id="blog-date">Date</span>
+            <span id="blog-author">Author</span>
+        </div>
+    </header>
+
+    <!-- Blog content -->
+    <main id="blog-content" class="blog-content">
+        <div class="loading">Loading blog post...</div>
+    </main>
+
+    <div class="divider"></div>
+    
+    <footer class="footer">
+        <div>To get in touch, mail at <a href="mailto:sjaykh.me@gmail.com">sjaykh.me@gmail.com</a></div>
+        
+        <div class="social-links">
+            <a href="https://twitter.com/sjaykh" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="https://www.linkedin.com/in/sjaykh/" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+            <a href="https://www.instagram.com/sjaykh/" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="js/blog-view.js"></script>
+</body>
+</html> 
