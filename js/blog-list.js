@@ -29,90 +29,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Load blog posts
-    async function loadBlogPosts() {
+    async function loadBlogs() {
         try {
-            // Show loading state
-            if (blogEntriesContainer) {
-                blogEntriesContainer.innerHTML = '<div class="loading">Loading blogs...</div>';
-            }
+            // Initialize the blog loader
+            const blogLoader = new LocalBlogLoader('blogs/index.json');
             
-            // Determine if we're on GitHub Pages
-            const onGitHubPages = isGitHubPages();
-            console.log('Running on GitHub Pages:', onGitHubPages);
-            
-            // Use relative path for both local and GitHub Pages with custom domain
-            const indexUrl = 'blogs/index.json';
-            console.log('Fetching blog index from:', indexUrl);
-            
-            const response = await fetch(indexUrl);
-            
-            if (!response.ok) {
-                throw new Error(`Failed to load blogs index (${response.status})`);
-            }
-            
-            const posts = await response.json();
-            console.log(`Loaded ${posts.length} blog posts`);
+            // Fetch all blog posts
+            const posts = await blogLoader.fetchPosts();
             
             // Sort posts by date (newest first)
             posts.sort((a, b) => {
-                // Parse dates - handle both YYYY-MM-DD and Month DD, YYYY formats
-                let dateA = new Date(a.date);
-                let dateB = new Date(b.date);
-                
-                // If date parsing failed, try to parse as YYYY-MM-DD
-                if (isNaN(dateA.getTime())) {
-                    const [yearA, monthA, dayA] = a.date.split('-').map(num => parseInt(num, 10));
-                    dateA = new Date(yearA, monthA - 1, dayA);
-                }
-                
-                if (isNaN(dateB.getTime())) {
-                    const [yearB, monthB, dayB] = b.date.split('-').map(num => parseInt(num, 10));
-                    dateB = new Date(yearB, monthB - 1, dayB);
-                }
-                
-                // Sort newest first
-                return dateB - dateA;
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateB - dateA;  // Descending order (newest first)
             });
             
-            allPosts = posts;
-            filteredPosts = [...posts];
-            
-            // Display the first page
-            displayPage(currentPage);
-            
-            // Set up pagination
-            setupPagination();
-            
-            // Set up search functionality
-            setupSearch();
-            
+            // Display the blog posts
+            displayBlogPosts(posts);
         } catch (error) {
-            console.error('Error loading blog posts:', error);
-            if (blogEntriesContainer) {
-                blogEntriesContainer.innerHTML = `
-                    <div class="error">
-                        <h3>Error Loading Blog Posts</h3>
-                        <p>${error.message}</p>
-                        <p>Please try again later.</p>
-                    </div>
-                    
-                    <div class="debugging-info">
-                        <h4>Debugging Information</h4>
-                        <p>Current URL: ${window.location.href}</p>
-                        <p>Hostname: ${window.location.hostname}</p>
-                        <p>On GitHub Pages: ${isGitHubPages()}</p>
-                    </div>
-                `;
-            }
+            console.error('Error loading blogs:', error);
+            document.getElementById('blog-container').innerHTML = `
+                <div class="error-message">
+                    <h3>Error Loading Blogs</h3>
+                    <p>Could not load the blog posts. Please try again later.</p>
+                    <p class="error-details">${error.message || 'Unknown error'}</p>
+                </div>
+            `;
         }
     }
     
     // Format date for display
     function formatDate(dateString) {
         if (!dateString) return '';
-        
-        // If it's already in the desired format, return it
-        if (dateString.includes(',')) return dateString;
         
         try {
             const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
@@ -129,37 +77,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Display a page of blog posts
+    // Display a specific page of posts
     function displayPage(page) {
-        if (!blogEntriesContainer) return;
-        
         // Calculate start and end indices
         const startIndex = (page - 1) * postsPerPage;
-        const endIndex = Math.min(startIndex + postsPerPage, filteredPosts.length);
+        const endIndex = startIndex + postsPerPage;
+        const postsToShow = filteredPosts.slice(startIndex, endIndex);
         
-        // Get posts for the current page
-        const postsToDisplay = filteredPosts.slice(startIndex, endIndex);
-        
-        if (postsToDisplay.length === 0) {
+        if (postsToShow.length === 0) {
             blogEntriesContainer.innerHTML = '<div class="no-results">No blog posts found.</div>';
             return;
         }
         
         // Generate HTML for each post
-        const postsHTML = postsToDisplay.map(post => {
+        const postsHTML = postsToShow.map(post => {
+            const formattedDate = formatDate(post.date);
+            
             return `
                 <div class="blog-entry">
                     <h2 class="blog-title">
                         <a href="blog.html?slug=${post.slug}">${post.title}</a>
                     </h2>
                     <div class="blog-meta">
-                        <span class="blog-date">${formatDate(post.date)}</span>
+                        <span class="blog-date">${formattedDate}</span>
                         <span class="blog-author">${post.author}</span>
                     </div>
-                    <div class="blog-excerpt">
-                        <p>${post.excerpt}</p>
-                    </div>
-                    <a href="blog.html?slug=${post.slug}" class="read-more">Read more</a>
+                    <div class="blog-excerpt">${post.excerpt}</div>
+                    <a href="blog.html?slug=${post.slug}" class="read-more">Read more →</a>
                 </div>
             `;
         }).join('');
@@ -284,7 +228,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Start loading blog posts
-    if (blogEntriesContainer) {
-        loadBlogPosts();
-    }
+    loadBlogs();
 }); 
