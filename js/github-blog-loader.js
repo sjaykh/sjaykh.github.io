@@ -46,8 +46,8 @@ class GitHubBlogLoader {
             // Create GitHub Pages URL
             if (window.location.hostname.includes('github.io')) {
                 // Direct fetch from GitHub raw content
-                const ghUsername = 'gourikartha';
-                const ghRepo = 'gourikartha.github.io';
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
                 
                 // Remove leading slash if present
                 if (filePath.startsWith('/')) {
@@ -398,8 +398,8 @@ class LocalBlogLoader {
 
             if (isGitHubPages) {
                 // On GitHub Pages, try a few different URL patterns
-                const ghUsername = 'gourikartha';
-                const ghRepo = 'gourikartha.github.io';
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
                 
                 // First try without /main/ since GitHub Pages serves from the root
                 indexUrl = `https://${ghUsername}.github.io/${this.path}/index.json`;
@@ -415,8 +415,8 @@ class LocalBlogLoader {
             
             // If first GitHub Pages URL fails, try raw.githubusercontent.com
             if (!response.ok && isGitHubPages) {
-                const ghUsername = 'gourikartha';
-                const ghRepo = 'gourikartha.github.io';
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
                 const rawUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/${this.path}/index.json`;
                 console.log(`First attempt failed, trying raw URL: ${rawUrl}`);
                 response = await fetch(rawUrl);
@@ -486,8 +486,8 @@ class LocalBlogLoader {
             // Create GitHub Pages URL
             if (window.location.hostname.includes('github.io')) {
                 // Direct fetch from GitHub raw content
-                const ghUsername = 'gourikartha';
-                const ghRepo = 'gourikartha.github.io';
+                const ghUsername = 'sjaykh';
+                const ghRepo = 'sjaykh.github.io';
                 
                 // Remove leading slash if present
                 if (filePath.startsWith('/')) {
