@@ -32,7 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadBlogPosts() {
         try {
             // Show loading state
-            blogEntriesContainer.innerHTML = '<div class="loading">Loading blogs...</div>';
+            if (blogEntriesContainer) {
+                blogEntriesContainer.innerHTML = '<div class="loading">Loading blogs...</div>';
+            }
             
             // Determine if we're on GitHub Pages
             const onGitHubPages = isGitHubPages();
@@ -53,8 +55,22 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Sort posts by date (newest first)
             posts.sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
+                // Parse dates - handle both YYYY-MM-DD and Month DD, YYYY formats
+                let dateA = new Date(a.date);
+                let dateB = new Date(b.date);
+                
+                // If date parsing failed, try to parse as YYYY-MM-DD
+                if (isNaN(dateA.getTime())) {
+                    const [yearA, monthA, dayA] = a.date.split('-').map(num => parseInt(num, 10));
+                    dateA = new Date(yearA, monthA - 1, dayA);
+                }
+                
+                if (isNaN(dateB.getTime())) {
+                    const [yearB, monthB, dayB] = b.date.split('-').map(num => parseInt(num, 10));
+                    dateB = new Date(yearB, monthB - 1, dayB);
+                }
+                
+                // Sort newest first
                 return dateB - dateA;
             });
             
@@ -72,26 +88,31 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Error loading blog posts:', error);
-            blogEntriesContainer.innerHTML = `
-                <div class="error">
-                    <h3>Error Loading Blog Posts</h3>
-                    <p>${error.message}</p>
-                    <p>Please try again later.</p>
-                </div>
-                
-                <div class="debugging-info">
-                    <h4>Debugging Information</h4>
-                    <p>Current URL: ${window.location.href}</p>
-                    <p>Hostname: ${window.location.hostname}</p>
-                    <p>On GitHub Pages: ${isGitHubPages()}</p>
-                </div>
-            `;
+            if (blogEntriesContainer) {
+                blogEntriesContainer.innerHTML = `
+                    <div class="error">
+                        <h3>Error Loading Blog Posts</h3>
+                        <p>${error.message}</p>
+                        <p>Please try again later.</p>
+                    </div>
+                    
+                    <div class="debugging-info">
+                        <h4>Debugging Information</h4>
+                        <p>Current URL: ${window.location.href}</p>
+                        <p>Hostname: ${window.location.hostname}</p>
+                        <p>On GitHub Pages: ${isGitHubPages()}</p>
+                    </div>
+                `;
+            }
         }
     }
     
     // Format date for display
     function formatDate(dateString) {
         if (!dateString) return '';
+        
+        // If it's already in the desired format, return it
+        if (dateString.includes(',')) return dateString;
         
         try {
             const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
@@ -108,33 +129,37 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Display a specific page of posts
+    // Display a page of blog posts
     function displayPage(page) {
+        if (!blogEntriesContainer) return;
+        
         // Calculate start and end indices
         const startIndex = (page - 1) * postsPerPage;
-        const endIndex = startIndex + postsPerPage;
-        const postsToShow = filteredPosts.slice(startIndex, endIndex);
+        const endIndex = Math.min(startIndex + postsPerPage, filteredPosts.length);
         
-        if (postsToShow.length === 0) {
+        // Get posts for the current page
+        const postsToDisplay = filteredPosts.slice(startIndex, endIndex);
+        
+        if (postsToDisplay.length === 0) {
             blogEntriesContainer.innerHTML = '<div class="no-results">No blog posts found.</div>';
             return;
         }
         
         // Generate HTML for each post
-        const postsHTML = postsToShow.map(post => {
-            const formattedDate = formatDate(post.date);
-            
+        const postsHTML = postsToDisplay.map(post => {
             return `
                 <div class="blog-entry">
                     <h2 class="blog-title">
                         <a href="blog.html?slug=${post.slug}">${post.title}</a>
                     </h2>
                     <div class="blog-meta">
-                        <span class="blog-date">${formattedDate}</span>
+                        <span class="blog-date">${formatDate(post.date)}</span>
                         <span class="blog-author">${post.author}</span>
                     </div>
-                    <div class="blog-excerpt">${post.excerpt}</div>
-                    <a href="blog.html?slug=${post.slug}" class="read-more">Read more →</a>
+                    <div class="blog-excerpt">
+                        <p>${post.excerpt}</p>
+                    </div>
+                    <a href="blog.html?slug=${post.slug}" class="read-more">Read more</a>
                 </div>
             `;
         }).join('');
@@ -259,5 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Start loading blog posts
-    loadBlogPosts();
+    if (blogEntriesContainer) {
+        loadBlogPosts();
+    }
 }); 
