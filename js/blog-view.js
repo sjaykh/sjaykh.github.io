@@ -65,9 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch the blog index to get the blog metadata
     let indexUrl = 'blogs/index.json';
     
-    // If on GitHub Pages with custom domain, still use relative paths
-    // This works because the file structure is the same on GitHub Pages
-    
     console.log('Fetching blog index from:', indexUrl);
     
     fetch(indexUrl)
@@ -97,35 +94,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('blog-date').textContent = formatDate(blog.date);
             document.getElementById('blog-author').textContent = blog.author;
             
-            // Determine the URL to fetch the blog content
-            let contentUrl = blog.path;
-            
-            // For GitHub Pages with custom domain, we can use relative paths
-            // This works because the file structure is the same
-            
-            console.log('Fetching blog content from:', contentUrl);
-            
-            // Fetch the blog content
-            return fetch(contentUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to load blog content from ${contentUrl} (${response.status})`);
-                    }
-                    return response.text();
-                })
-                .then(markdown => {
-                    // Remove frontmatter from markdown
-                    const content = markdown.replace(/^---[\s\S]*?---\n/, '');
-                    
+            // Fetch content using GitHub API if on custom domain
+            return fetchBlogContentUsingGitHubAPI(blog)
+                .then(content => {
                     // Configure marked for proper rendering
                     marked.setOptions({
                         breaks: true,
                         gfm: true
                     });
                     
-                    // Parse the markdown content directly without custom renderers
+                    // Parse the markdown content
                     try {
-                        const htmlContent = marked.parse(content);
+                        // For markdown files, parse the content
+                        let htmlContent;
+                        if (blog.path.endsWith('.md')) {
+                            // Remove frontmatter from markdown
+                            const cleanContent = content.replace(/^---[\s\S]*?---\n/, '');
+                            htmlContent = marked.parse(cleanContent);
+                        } else {
+                            // For HTML files, use as is
+                            htmlContent = content;
+                        }
                         
                         // Fix image paths after parsing
                         let fixedHtml = htmlContent;
@@ -137,45 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Display the content
                         document.getElementById('blog-content').innerHTML = fixedHtml;
                         
-                        // Process images for better display
-                        const images = document.getElementById('blog-content').querySelectorAll('img');
-                        images.forEach(img => {
-                            // Add loading="lazy" for better performance
-                            img.setAttribute('loading', 'lazy');
-                            
-                            // Add class for styling
-                            img.classList.add('blog-image');
-                            
-                            // Wrap single images in paragraphs with a class for better styling
-                            if (img.parentNode.nodeName === 'P' && 
-                                img.parentNode.childNodes.length === 1) {
-                                img.parentNode.classList.add('image-container');
-                            }
-                        });
+                        // Setup post navigation
+                        setupPostNavigation(blogs, blog);
                         
-                        // Add target="_blank" to all external links
-                        const links = document.getElementById('blog-content').querySelectorAll('a');
-                        links.forEach(link => {
-                            if (link.hostname !== window.location.hostname) {
-                                link.setAttribute('target', '_blank');
-                                link.setAttribute('rel', 'noopener noreferrer');
-                            }
-                        });
+                        // Process images and links
+                        enhanceContentDisplay();
                         
-                        // Style blockquotes
-                        const blockquotes = document.getElementById('blog-content').querySelectorAll('blockquote');
-                        blockquotes.forEach(blockquote => {
-                            // Check if this is a nested blockquote
-                            if (blockquote.querySelector('blockquote')) {
-                                blockquote.classList.add('outer-quote');
-                                
-                                // Find all nested blockquotes and add a class
-                                const nestedQuotes = blockquote.querySelectorAll('blockquote');
-                                nestedQuotes.forEach(nested => {
-                                    nested.classList.add('nested-quote');
-                                });
-                            }
-                        });
+                        return blog;
                     } catch (parseError) {
                         console.error('Error parsing markdown:', parseError);
                         throw parseError;
@@ -195,192 +152,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 });
 
-// Add debug function to help troubleshoot issues
-function addDebugInfo(container) {
-    // Create debug section
-    const debugSection = document.createElement('div');
-    debugSection.className = 'debug-section';
-    debugSection.innerHTML = `
-        <h3>Debugging Information</h3>
-        <div class="debug-log">Current URL: ${window.location.href}</div>
-        <div class="debug-log">Requested slug: ${getUrlParameter('slug')}</div>
-        <div class="debug-log">Blogs path: ${blogLoader.path}</div>
-        <div class="debug-log">Available blog loaders: ${window.LocalBlogLoader ? 'LocalBlogLoader' : 'None'}, 
-            ${window.GitHubBlogLoader ? 'GitHubBlogLoader' : 'None'}</div>
-        <div class="debug-log">Index file: ${blogLoader.indexFile}</div>
-    `;
-    
-    container.appendChild(debugSection);
-    
-    // Try to check actual blog files
-    try {
-        fetch(blogLoader.indexFile)
-            .then(response => {
-                const debugLog = document.createElement('div');
-                debugLog.className = 'debug-log';
-                
-                if (response.ok) {
-                    response.json().then(data => {
-                        if (data && data.posts) {
-                            debugLog.innerHTML = `Index file loaded successfully. Contains ${data.posts.length} posts.`;
-                            const slugs = data.posts.map(p => p.name.replace(/\.(html|md)$/, '')).join(', ');
-                            
-                            const slugsList = document.createElement('div');
-                            slugsList.className = 'debug-log';
-                            slugsList.innerHTML = `Available slugs: ${slugs}`;
-                            debugSection.appendChild(slugsList);
-                        } else {
-                            debugLog.innerHTML = 'Index file found but has no posts data';
-                            debugLog.classList.add('error-log');
-                        }
-                    }).catch(err => {
-                        debugLog.innerHTML = `Error parsing index file: ${err.message}`;
-                        debugLog.classList.add('error-log');
-                    });
-                } else {
-                    debugLog.innerHTML = `Index file not found (${response.status} ${response.statusText})`;
-                    debugLog.classList.add('error-log');
-                }
-                
-                debugSection.appendChild(debugLog);
-            })
-            .catch(err => {
-                const debugLog = document.createElement('div');
-                debugLog.className = 'debug-log error-log';
-                debugLog.innerHTML = `Error checking index file: ${err.message}`;
-                debugSection.appendChild(debugLog);
-            });
-    } catch (e) {
-        console.error('Error in debug section:', e);
-    }
-}
-
-// Load the blog post content
-async function loadBlogPost() {
-    try {
-        // Get the slug from URL parameter
-        const slug = getUrlParameter('slug');
-        
-        if (!slug) {
-            console.warn('No slug parameter found in URL, redirecting to blogs listing');
-            window.location.href = 'blogs.html';
-            return;
-        }
-        
-        // Show loading state
-        blogContent.innerHTML = '<p class="loading">Loading blog content...</p>';
-        
-        // Get all blog posts
-        const posts = await fetchBlogPosts();
-        console.log('Fetched all blog posts:', posts.length);
-        
-        // Find the current post by slug
-        const currentPost = posts.find(post => post.slug === slug);
-        
-        if (!currentPost) {
-            console.error('Blog post not found for slug:', slug);
-            blogContent.innerHTML = `
-                <div class="error">
-                    <h3>Blog Post Not Found</h3>
-                    <p>The requested blog post could not be found.</p>
-                    <div class="hint">Check the URL and try again.</div>
-                </div>
-            `;
-            
-            // Add debug info to help troubleshoot
-            addDebugInfo(blogContent);
-            return;
-        }
-        
-        
-        // Update page title
-        document.title = `${currentPost.title} - Sanjay Krishna`;
-        
-        // Populate blog post data
-        blogTitle.textContent = currentPost.title;
-        blogDate.textContent = formatDate(currentPost.date);
-        blogAuthor.textContent = currentPost.author;
-        
-        // Set featured image
-        if (currentPost.image) {
-            blogImage.src = currentPost.image;
-            blogImage.alt = currentPost.title;
-            blogImage.style.display = 'block';
-        }
-        
-        // Display the blog content
-        if (currentPost.content) {
-            blogContent.innerHTML = currentPost.content;
-        } else {
-            // Try to fetch the content directly from the file
-            try {
-                const content = await fetchBlogContent(currentPost);
-                if (content) {
-                    blogContent.innerHTML = content;
-                } else {
-                    blogContent.innerHTML = '<p>Failed to load blog content. Please try again later.</p>';
-                }
-            } catch (error) {
-                console.error('Error loading blog content:', error);
-                blogContent.innerHTML = `
-                    <div class="error">
-                        <h3>Unable to Load Content</h3>
-                        <p class="hint">There was an error loading the blog content: ${error.message}</p>
-                    </div>
-                `;
-            }
-        }
-        
-        // Set up navigation to previous and next posts
-        setupPostNavigation(posts, currentPost);
-        
-    } catch (error) {
-        console.error('Error loading blog post:', error);
-        blogContent.innerHTML = `
-            <div class="error">
-                <h3>Failed to Load Blog Post</h3>
-                <p class="hint">${error.message || 'Please try again later.'}</p>
-            </div>
-        `;
-        
-        // Add debug info to help troubleshoot
-        addDebugInfo(blogContent);
-    }
-}
-
-// Fetch blog posts using the LocalBlogLoader
-async function fetchBlogPosts() {
-    try {
-        // Use the blog loader to fetch posts
-        const posts = await blogLoader.fetchPosts();
-        
-        // For each post, make sure it has a slug
-        posts.forEach(post => {
-            if (!post.slug) {
-                post.slug = post.name ? post.name.replace(/\.(html|md)$/, '') : '';
-            }
-        });
-        
-        console.log(`Loaded ${posts.length} blog posts`);
-        return posts;
-    } catch (error) {
-        console.error('Error fetching blog posts:', error);
-        throw error;
-    }
-}
-
 /**
- * Fetch and display a blog post's content
- * @param {Object} post - Blog post metadata
- * @returns {Promise<string>} HTML content of the blog post
+ * Fetch blog content using GitHub API directly if on custom domain
+ * This should work more reliably than using relative paths
  */
-async function fetchBlogContent(post) {
+async function fetchBlogContentUsingGitHubAPI(blog) {
     try {
-        console.log('Fetching blog content for:', post.slug);
+        console.log('Fetching blog content for:', blog.slug);
         
         // Handle both relative and absolute paths
-        let filePath = post.path;
-        let fullUrl;
+        let filePath = blog.path;
+        
+        // Remove leading slash if present
+        if (filePath.startsWith('/')) {
+            filePath = filePath.substring(1);
+        }
         
         // Determine if we're running on custom domain or github.io
         const isGitHubPages = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
@@ -389,91 +175,125 @@ async function fetchBlogContent(post) {
         console.log('Running on GitHub Pages:', isGitHubPages);
         console.log('Running on custom domain:', isCustomDomain);
         
-        // When running on custom domain, use GitHub raw content URL
+        let contentUrl;
+        
         if (isCustomDomain) {
-            // For custom domains, we need to use the raw.githubusercontent.com URL
-            const ghUsername = 'sjaykh';
-            const ghRepo = 'sjaykh.github.io';
+            // For custom domains, use the GitHub API to fetch content directly
+            const username = 'sjaykh';
+            const repo = 'sjaykh.github.io';
             
-            // Remove leading slash if present
-            if (filePath.startsWith('/')) {
-                filePath = filePath.substring(1);
+            // First try the Raw Content URL as it's more reliable
+            contentUrl = `https://raw.githubusercontent.com/${username}/${repo}/main/${filePath}`;
+            console.log('Trying GitHub raw URL:', contentUrl);
+            
+            try {
+                const response = await fetch(contentUrl, {
+                    cache: 'no-store',
+                    headers: {
+                        'Accept': 'text/plain, text/markdown',
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                
+                if (response.ok) {
+                    const content = await response.text();
+                    console.log(`Successfully fetched ${content.length} bytes from Raw GitHub`);
+                    return content;
+                }
+                
+                console.warn(`Raw GitHub fetch failed with status ${response.status}, trying API fallback`);
+            } catch (error) {
+                console.warn('Error fetching from Raw GitHub, trying API fallback:', error);
             }
             
-            // Use raw.githubusercontent.com for direct content access
-            fullUrl = `https://raw.githubusercontent.com/${ghUsername}/${ghRepo}/main/${filePath}`;
-            console.log(`Using GitHub raw content URL: ${fullUrl}`);
-        } 
-        // For github.io or local development 
-        else {
-            if (filePath.startsWith('/')) {
-                filePath = filePath.substring(1);
-            }
-            fullUrl = new URL(filePath, window.location.origin).href;
-            console.log(`Using relative URL: ${fullUrl}`);
-        }
-        
-        // Add a cache-busting parameter to prevent caching issues
-        fullUrl = `${fullUrl}?t=${new Date().getTime()}`;
-        console.log('Final URL for blog content:', fullUrl);
-        
-        const response = await fetch(fullUrl, {
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            }
-        });
-        
-        if (!response.ok) {
-            console.error(`Failed to fetch blog ${fullUrl}: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to fetch blog content (${response.status}). Please check if the file exists at ${filePath}`);
-        }
-        
-        const content = await response.text();
-        console.log(`Fetched ${content.length} bytes of content`);
-        
-        // Process Markdown files
-        if (post.path.endsWith('.md')) {
-            // Remove frontmatter and convert to HTML
-            const cleanContent = content.replace(/---[\s\S]*?---/, '').trim();
+            // Fallback to GitHub API
+            const apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/${filePath}`;
+            console.log('Falling back to GitHub API URL:', apiUrl);
             
-            // Configure marked for proper rendering
-            marked.setOptions({
-                breaks: true,
-                gfm: true
+            const response = await fetch(apiUrl, {
+                cache: 'no-store',
+                headers: {
+                    'Accept': 'application/vnd.github.v3.raw',
+                    'Cache-Control': 'no-cache'
+                }
             });
             
-            const html = marked.parse(cleanContent);
-            return html;
+            if (!response.ok) {
+                throw new Error(`Failed to fetch from GitHub API: ${response.status} ${response.statusText}`);
+            }
+            
+            const content = await response.text();
+            console.log(`Successfully fetched ${content.length} bytes from GitHub API`);
+            return content;
+        } else {
+            // For github.io or local development, use relative paths
+            contentUrl = new URL(filePath, window.location.origin).href;
+            console.log('Using relative URL:', contentUrl);
+            
+            const response = await fetch(contentUrl, {
+                cache: 'no-store',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch blog content: ${response.status} ${response.statusText}`);
+            }
+            
+            const content = await response.text();
+            console.log(`Successfully fetched ${content.length} bytes`);
+            return content;
         }
-        
-        // Process HTML files (if any)
-        let htmlContent = content;
-        
-        // Extract content from article tag if available
-        const articleMatch = htmlContent.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-        if (articleMatch) {
-            htmlContent = articleMatch[1];
-        }
-        
-        return htmlContent;
     } catch (error) {
         console.error('Error fetching blog content:', error);
-        return `
-            <div class="error">
-                <h3>Error Loading Blog Content</h3>
-                <p>${error.message}</p>
-                <p>Please try again later.</p>
-                <div class="debug-info">
-                    <p>Post slug: ${post.slug}</p>
-                    <p>Post path: ${post.path}</p>
-                    <p>Host: ${window.location.hostname}</p>
-                    <p>Repository: https://github.com/sjaykh/sjaykh.github.io</p>
-                </div>
-            </div>
-        `;
+        throw new Error(`Failed to load blog content: ${error.message}`);
     }
+}
+
+/**
+ * Enhance images and links in the blog content
+ */
+function enhanceContentDisplay() {
+    // Process images for better display
+    const images = document.getElementById('blog-content').querySelectorAll('img');
+    images.forEach(img => {
+        // Add loading="lazy" for better performance
+        img.setAttribute('loading', 'lazy');
+        
+        // Add class for styling
+        img.classList.add('blog-image');
+        
+        // Wrap single images in paragraphs with a class for better styling
+        if (img.parentNode.nodeName === 'P' && 
+            img.parentNode.childNodes.length === 1) {
+            img.parentNode.classList.add('image-container');
+        }
+    });
+    
+    // Add target="_blank" to all external links
+    const links = document.getElementById('blog-content').querySelectorAll('a');
+    links.forEach(link => {
+        if (link.hostname !== window.location.hostname) {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+        }
+    });
+    
+    // Style blockquotes
+    const blockquotes = document.getElementById('blog-content').querySelectorAll('blockquote');
+    blockquotes.forEach(blockquote => {
+        // Check if this is a nested blockquote
+        if (blockquote.querySelector('blockquote')) {
+            blockquote.classList.add('outer-quote');
+            
+            // Find all nested blockquotes and add a class
+            const nestedQuotes = blockquote.querySelectorAll('blockquote');
+            nestedQuotes.forEach(nested => {
+                nested.classList.add('nested-quote');
+            });
+        }
+    });
 }
 
 // Set up navigation to previous and next posts
