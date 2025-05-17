@@ -4,6 +4,136 @@
  * It supports both local development and GitHub Pages deployment.
  */
 
+class GitHubBlogLoader {
+    constructor(username, repo, path) {
+        this.username = username;
+        this.repo = repo;
+        this.path = path;
+        
+        // For GitHub Pages, use direct URLs to the raw content
+        if (repo.endsWith('.github.io')) {
+            // This is a GitHub Pages site, use URLs relative to the current domain
+            this.apiUrl = `https://${username}.github.io/${path}`;
+            this.rawContentUrl = `https://${username}.github.io/${path}`;
+        } else {
+            // Standard GitHub repository
+            this.apiUrl = `https://api.github.com/repos/${username}/${repo}/contents/${path}`;
+            this.rawContentUrl = `https://raw.githubusercontent.com/${username}/${repo}/main/${path}`;
+        }
+        
+        console.log(`GitHubBlogLoader initialized with API URL: ${this.apiUrl}`);
+    }
+
+    /**
+     * Fetch all blog posts from the GitHub repository
+     * @returns {Promise<Array>} Array of blog post objects
+     */
+    async fetchBlogPosts() {
+        console.log('fetchBlogPosts is deprecated, use fetchPosts instead');
+        return this.fetchPosts();
+    }
+
+    /**
+     * Fetch all blog posts
+     * @returns {Promise<Array>} Array of blog post objects
+     */
+    async fetchPosts() {
+        try {
+            const isGitHubPages = this.isGitHubPages();
+            console.log(`Running on GitHub Pages: ${isGitHubPages}`);
+            
+            // Use relative path for index.json
+            const indexUrl = `${this.path}/index.json`;
+            console.log(`Fetching blog index from: ${indexUrl}`);
+            
+            const response = await fetch(indexUrl);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load blog index: ${response.status} ${response.statusText}`);
+            }
+            
+            const posts = await response.json();
+            console.log(`Loaded ${posts.length} blog posts`);
+            
+            return posts;
+        } catch (error) {
+            console.error('Error in GitHubBlogLoader.fetchPosts:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Check if we're running on GitHub Pages (either github.io or custom domain)
+     */
+    isGitHubPages() {
+        // List of known local development hostnames
+        const localHostnames = ['localhost', '127.0.0.1', ''];
+        
+        // If we're on a local hostname, we're not on GitHub Pages
+        if (localHostnames.includes(window.location.hostname)) {
+            return false;
+        }
+        
+        // Otherwise, assume we're on GitHub Pages (either github.io or custom domain)
+        return true;
+    }
+}
+
+/**
+ * Local Blog Loader
+ * This class is used for loading blog posts from a local directory
+ */
+class LocalBlogLoader {
+    constructor(path) {
+        this.path = path;
+    }
+    
+    /**
+     * Fetch posts from the local index file
+     * @returns {Promise<Array>} Array of blog post objects
+     */
+    async fetchPosts() {
+        try {
+            console.log(`LocalBlogLoader: Fetching posts from ${this.path}/index.json`);
+            
+            const indexUrl = `${this.path}/index.json`;
+            const response = await fetch(indexUrl);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to load blog index: ${response.status} ${response.statusText}`);
+            }
+            
+            const posts = await response.json();
+            
+            // Sort posts by date (newest first)
+            posts.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateB - dateA;  // Descending order (newest first)
+            });
+            
+            console.log(`LocalBlogLoader: Loaded ${posts.length} posts`);
+            return posts;
+        } catch (error) {
+            console.error('Error in LocalBlogLoader.fetchPosts:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Backward compatibility method for fetchBlogPosts
+     * @returns {Promise<Array>} Array of blog posts
+     */
+    async fetchBlogPosts() {
+        console.warn('fetchBlogPosts is deprecated, use fetchPosts instead');
+        return this.fetchPosts();
+    }
+}
+
+// Export both loaders
+window.GitHubBlogLoader = GitHubBlogLoader;
+window.LocalBlogLoader = LocalBlogLoader;
+
 class BlogLoader {
     constructor(options = {}) {
         this.path = options.path || 'blogs';
