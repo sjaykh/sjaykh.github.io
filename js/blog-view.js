@@ -127,10 +127,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         const htmlContent = marked.parse(content);
                         
-                        // Fix image paths after parsing
-                        let fixedHtml = htmlContent;
-                        
                         // Fix relative image paths
+                        let fixedHtml = htmlContent;
                         fixedHtml = fixedHtml.replace(/src="\.\.\/images\//g, 'src="images/');
                         fixedHtml = fixedHtml.replace(/src="\.\/images\//g, 'src="images/');
                         
