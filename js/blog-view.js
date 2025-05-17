@@ -89,57 +89,61 @@ document.addEventListener('DOMContentLoaded', () => {
             blogDate.textContent = formatDate(blog.date);
             blogAuthor.textContent = blog.author;
             
-            // Check if we're on GitHub Pages with custom domain
-            const isCustomDomain = window.location.hostname !== 'localhost' && 
-                                   window.location.hostname !== '127.0.0.1' &&
-                                   !window.location.hostname.includes('github.io');
-            
-            if (isCustomDomain) {
-                console.log('Custom domain detected, using GitHub API');
-                
-                // Get the file path relative to repository root
-                let filePath = blog.path;
-                if (filePath.startsWith('/')) {
-                    filePath = filePath.substring(1);
-                }
-                
-                // Use GitHub API to fetch content
-                const ghUsername = 'sjaykh';
-                const ghRepo = 'sjaykh.github.io';
-                const apiUrl = `https://api.github.com/repos/${ghUsername}/${ghRepo}/contents/${filePath}`;
-                
-                console.log('Fetching from GitHub API:', apiUrl);
-                
-                return fetch(apiUrl)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`GitHub API error: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        // GitHub API returns content as base64
-                        const content = atob(data.content);
-                        return processContent(content, blog);
-                    });
-            } else {
-                // For local development or github.io, use direct fetch
-                let contentUrl = blog.path;
-                if (contentUrl.startsWith('/')) {
-                    contentUrl = contentUrl.substring(1);
-                }
-                
-                console.log('Fetching content directly:', contentUrl);
-                
-                return fetch(contentUrl)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error(`Failed to load content: ${response.status}`);
-                        }
-                        return response.text();
-                    })
-                    .then(content => processContent(content, blog));
+            // Simplest solution: use raw GitHub content for all environments
+            let filePath = blog.path;
+            if (filePath.startsWith('/')) {
+                filePath = filePath.substring(1);
             }
+            
+            const rawUrl = `https://raw.githubusercontent.com/sjaykh/sjaykh.github.io/main/${filePath}`;
+            console.log('Fetching from raw GitHub URL:', rawUrl);
+            
+            return fetch(rawUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch content: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    // Configure marked for proper rendering
+                    marked.setOptions({
+                        breaks: true,
+                        gfm: true
+                    });
+                    
+                    // For markdown files, parse the content
+                    let htmlContent;
+                    if (blog.path.endsWith('.md')) {
+                        // Remove frontmatter from markdown
+                        const cleanContent = content.replace(/^---[\s\S]*?---\n/, '');
+                        htmlContent = marked.parse(cleanContent);
+                    } else {
+                        // For HTML files, use as is
+                        htmlContent = content;
+                    }
+                    
+                    // Fix image paths
+                    htmlContent = htmlContent.replace(/src="\.\.\/images\//g, 'src="images/');
+                    htmlContent = htmlContent.replace(/src="\.\/images\//g, 'src="images/');
+                    
+                    // Display the content
+                    blogContent.innerHTML = htmlContent;
+                    
+                    try {
+                        // Setup post navigation (if navigation elements exist)
+                        if (prevPost && nextPost) {
+                            setupPostNavigation(blogs, blog);
+                        }
+                    } catch (navError) {
+                        console.warn('Error setting up navigation:', navError);
+                    }
+                    
+                    // Process images and links
+                    enhanceContentDisplay();
+                    
+                    return blog;
+                });
         })
         .catch(error => {
             console.error('Error loading blog post:', error);
@@ -157,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Process blog content - parse markdown and apply fixes
  */
-function processContent(content, blog) {
+function processContent(content, blog, blogs) {
     // Configure marked for proper rendering
     marked.setOptions({
         breaks: true,
@@ -223,6 +227,12 @@ function enhanceContentDisplay() {
 
 // Set up navigation to previous and next posts
 function setupPostNavigation(posts, currentPost) {
+    // Ensure that prevPost and nextPost elements exist
+    if (!prevPost || !nextPost) {
+        console.warn('Navigation elements not found on this page');
+        return;
+    }
+    
     // Find the index of the current post
     const currentIndex = posts.findIndex(post => post.slug === currentPost.slug);
     
