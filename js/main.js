@@ -3,24 +3,38 @@
  */
 
 // Constants
-const GITHUB_USERNAME = 'sjaykh'; // Your actual GitHub username
-const REPO_NAME = 'sjaykh.github.io'; // Changed from 'webs' to the GitHub Pages repository name
-const BLOGS_PATH = 'blogs'; // Path to your blogs folder in the repository
+const GITHUB_USERNAME = 'sjaykh'; // Your GitHub username
+const REPO_NAME = 'sjaykh.github.io'; // GitHub Pages repository name
+const BLOGS_PATH = 'blogs'; // Path to blogs folder
 
-// Initialize blog loaders
-const githubBlogLoader = new GitHubBlogLoader(GITHUB_USERNAME, REPO_NAME, BLOGS_PATH);
-const localBlogLoader = new LocalBlogLoader(BLOGS_PATH);
+// Check if we're running on GitHub Pages (either github.io or custom domain)
+function isGitHubPages() {
+    // List of known local development hostnames
+    const localHostnames = ['localhost', '127.0.0.1', ''];
+    
+    // If we're on a local hostname, we're not on GitHub Pages
+    if (localHostnames.includes(window.location.hostname)) {
+        return false;
+    }
+    
+    // Otherwise, assume we're on GitHub Pages (either github.io or custom domain)
+    return true;
+}
 
-// DOM Elements
-const featuredPostsContainer = document.getElementById('featured-posts');
-const blogsContainer = document.getElementById('blogs-container');
-const blogEntriesContainer = document.getElementById('blog-entries');
-const searchInput = document.getElementById('search-input');
-const categoryFilter = document.getElementById('category-filter');
+// Log environment information for debugging
+console.log('Environment information:');
+console.log('- Hostname:', window.location.hostname);
+console.log('- Running on GitHub Pages:', isGitHubPages());
+console.log('- Full URL:', window.location.href);
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize the page based on which page we're on
+    const featuredPostsContainer = document.getElementById('featured-posts');
+    const blogsContainer = document.getElementById('blogs-container');
+    const searchInput = document.getElementById('search-input');
+    const categoryFilter = document.getElementById('category-filter');
+    
     if (featuredPostsContainer) {
         loadFeaturedPosts();
     }
@@ -40,31 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (newsletterForm) {
         newsletterForm.addEventListener('submit', handleNewsletterSubmit);
     }
-
-    // Check if we're running on GitHub Pages (either github.io or custom domain)
-    function isGitHubPages() {
-        // List of known local development hostnames
-        const localHostnames = ['localhost', '127.0.0.1', ''];
-        
-        // If we're on a local hostname, we're not on GitHub Pages
-        if (localHostnames.includes(window.location.hostname)) {
-            return false;
-        }
-        
-        // Otherwise, assume we're on GitHub Pages (either github.io or custom domain)
-        return true;
-    }
-    
-    // Log environment information for debugging
-    console.log('Environment information:');
-    console.log('- Hostname:', window.location.hostname);
-    console.log('- Running on GitHub Pages:', isGitHubPages());
-    console.log('- Full URL:', window.location.href);
 });
 
 // Load featured blog posts for the homepage
 async function loadFeaturedPosts() {
     try {
+        const featuredPostsContainer = document.getElementById('featured-posts');
+        if (!featuredPostsContainer) return;
+        
         const posts = await fetchBlogPosts();
         
         // Get the 3 most recent posts as featured
@@ -84,78 +81,88 @@ async function loadFeaturedPosts() {
         });
     } catch (error) {
         console.error('Error loading featured posts:', error);
-        featuredPostsContainer.innerHTML = '<p>Failed to load featured posts. Please try again later.</p>';
+        const featuredPostsContainer = document.getElementById('featured-posts');
+        if (featuredPostsContainer) {
+            featuredPostsContainer.innerHTML = '<p>Failed to load featured posts. Please try again later.</p>';
+        }
     }
 }
 
 // Load all blog posts for the blogs page
 async function loadAllPosts() {
     try {
+        const blogsContainer = document.getElementById('blogs-container');
+        if (!blogsContainer) return;
+        
         const posts = await fetchBlogPosts();
         
         if (posts.length === 0) {
-            if (blogsContainer) {
-                blogsContainer.innerHTML = '<p>No blog posts available yet.</p>';
-            }
+            blogsContainer.innerHTML = '<p>No blog posts available yet.</p>';
             return;
         }
         
-        if (blogsContainer) {
-            blogsContainer.innerHTML = '';
-            
-            // Create HTML for each blog post
-            posts.forEach(post => {
-                const postElement = createBlogPostCard(post);
-                blogsContainer.appendChild(postElement);
-            });
-            
-            // Populate category filter options
-            if (categoryFilter) {
-                populateCategoryFilter(posts);
-            }
+        blogsContainer.innerHTML = '';
+        
+        // Create HTML for each blog post
+        posts.forEach(post => {
+            const postElement = createBlogPostCard(post);
+            blogsContainer.appendChild(postElement);
+        });
+        
+        // Populate category filter options
+        const categoryFilter = document.getElementById('category-filter');
+        if (categoryFilter) {
+            populateCategoryFilter(posts);
         }
     } catch (error) {
-        console.error('Error loading blog posts:', error);
+        console.error('Error loading all posts:', error);
+        const blogsContainer = document.getElementById('blogs-container');
         if (blogsContainer) {
             blogsContainer.innerHTML = '<p>Failed to load blog posts. Please try again later.</p>';
         }
     }
 }
 
-// Fetch blog posts from local directory or GitHub repository
+// Fetch blog posts from the index.json file
 async function fetchBlogPosts() {
     try {
-        // Try to fetch posts from GitHub first
-        try {
-            const posts = await githubBlogLoader.fetchBlogPosts();
-            if (posts && posts.length > 0) {
-                console.log(`Loaded ${posts.length} posts from GitHub repository`);
-                return posts;
-            }
-        } catch (githubError) {
-            console.warn('Failed to load posts from GitHub:', githubError);
+        // Use relative path for both local and GitHub Pages
+        const indexUrl = 'blogs/index.json';
+        console.log('Fetching blog index from:', indexUrl);
+        
+        const response = await fetch(indexUrl);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load blogs index (${response.status})`);
         }
         
-        // Try local loader as fallback
-        try {
-            const posts = await localBlogLoader.fetchBlogPosts();
-            if (posts && posts.length > 0) {
-                console.log(`Loaded ${posts.length} posts from local directory`);
-                return posts;
-            }
-        } catch (localError) {
-            console.warn('Failed to load posts from local directory:', localError);
-        }
+        const posts = await response.json();
+        console.log(`Loaded ${posts.length} blog posts`);
         
-        // If both methods fail, use hardcoded posts
-        const hardcodedPosts = [
+        // Sort posts by date (newest first)
+        posts.sort((a, b) => {
+            // Parse dates - handle both YYYY-MM-DD and Month DD, YYYY formats
+            let dateA = new Date(a.date);
+            let dateB = new Date(b.date);
             
-        ];
+            // If date parsing failed, try to parse as YYYY-MM-DD
+            if (isNaN(dateA.getTime())) {
+                const [yearA, monthA, dayA] = a.date.split('-').map(num => parseInt(num, 10));
+                dateA = new Date(yearA, monthA - 1, dayA);
+            }
+            
+            if (isNaN(dateB.getTime())) {
+                const [yearB, monthB, dayB] = b.date.split('-').map(num => parseInt(num, 10));
+                dateB = new Date(yearB, monthB - 1, dayB);
+            }
+            
+            // Sort newest first
+            return dateB - dateA;
+        });
         
-        console.log(`Using ${hardcodedPosts.length} hardcoded posts as fallback`);
-        return hardcodedPosts;
+        return posts;
     } catch (error) {
-        console.error('Error loading blog posts:', error);
+        console.error('Error fetching blog posts:', error);
         return [];
     }
 }
@@ -165,16 +172,19 @@ function createBlogPostCard(post) {
     const article = document.createElement('article');
     article.className = 'blog-card';
     
+    // Format the date if needed
+    const formattedDate = formatDate(post.date);
+    
     article.innerHTML = `
         <div class="blog-card-image">
-            <img src="${post.image}" alt="${post.title}" onerror="this.src='images/blog-placeholder.jpg'">
+            <img src="${post.image || 'images/blog-placeholder.jpg'}" alt="${post.title}" onerror="this.src='images/blog-placeholder.jpg'">
         </div>
         <div class="blog-card-content">
             <h3 class="blog-card-title"><a href="blog.html?slug=${post.slug}">${post.title}</a></h3>
             <p class="blog-card-excerpt">${post.excerpt}</p>
             <div class="blog-card-meta">
-                <span class="blog-card-date">${post.date}</span>
-                <span class="blog-card-category">${post.category}</span>
+                <span class="blog-card-date">${formattedDate}</span>
+                ${post.category ? `<span class="blog-card-category">${post.category}</span>` : ''}
             </div>
         </div>
     `;
@@ -182,8 +192,36 @@ function createBlogPostCard(post) {
     return article;
 }
 
+// Format date for display
+function formatDate(dateString) {
+    if (!dateString) return '';
+    
+    // If it's already in the desired format, return it
+    if (dateString.includes(',')) return dateString;
+    
+    try {
+        const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+        const date = new Date(year, month - 1, day);
+        
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    } catch (e) {
+        console.error('Error formatting date:', e);
+        return dateString;
+    }
+}
+
 // Handle search functionality
 function handleSearch() {
+    const searchInput = document.getElementById('search-input');
+    const categoryFilter = document.getElementById('category-filter');
+    const blogsContainer = document.getElementById('blogs-container');
+    
+    if (!searchInput || !categoryFilter || !blogsContainer) return;
+    
     const searchValue = searchInput.value.toLowerCase();
     const categoryValue = categoryFilter.value;
     
@@ -192,7 +230,8 @@ function handleSearch() {
     blogCards.forEach(card => {
         const title = card.querySelector('.blog-card-title').textContent.toLowerCase();
         const excerpt = card.querySelector('.blog-card-excerpt').textContent.toLowerCase();
-        const category = card.querySelector('.blog-card-category').textContent;
+        const categoryElement = card.querySelector('.blog-card-category');
+        const category = categoryElement ? categoryElement.textContent : '';
         
         const matchesSearch = title.includes(searchValue) || excerpt.includes(searchValue);
         const matchesCategory = categoryValue === '' || category === categoryValue;
@@ -208,8 +247,11 @@ function handleCategoryFilter() {
 
 // Populate category filter options
 function populateCategoryFilter(posts) {
+    const categoryFilter = document.getElementById('category-filter');
+    if (!categoryFilter) return;
+    
     // Extract unique categories
-    const categories = [...new Set(posts.map(post => post.category))];
+    const categories = [...new Set(posts.filter(post => post.category).map(post => post.category))];
     
     // Add options to select element
     categories.forEach(category => {
